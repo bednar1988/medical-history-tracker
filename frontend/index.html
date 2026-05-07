@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Health Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f2f2f7;
+    --surface: #ffffff;
+    --surface2: #f8f8fb;
+    --border: #e5e5ea;
+    --border2: #d1d1d6;
+    --red: #ff3b30;
+    --red-light: #fff1f0;
+    --red-mid: #ffe0de;
+    --orange: #ff9500;
+    --orange-light: #fff8ee;
+    --yellow: #ffcc00;
+    --green: #34c759;
+    --green-light: #f0fff4;
+    --blue: #007aff;
+    --blue-light: #f0f6ff;
+    --purple: #af52de;
+    --text: #1c1c1e;
+    --text2: #6c6c70;
+    --text3: #aeaeb2;
+    --font: 'Inter', -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+  /* ── AUTH ── */
+  .auth-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
+  .auth-box { background: var(--surface); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); text-align: center; }
+  .auth-logo { width: 64px; height: 64px; background: linear-gradient(135deg, var(--red), var(--orange)); border-radius: 16px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .auth-box h1 { font-size: 24px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .auth-box .auth-subtitle { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+  .auth-box .auth-desc { color: var(--text2); font-size: 13px; line-height: 1.6; margin-bottom: 24px; background: var(--orange-light); border-radius: 10px; padding: 12px 16px; }
+  .auth-field { text-align: left; margin-bottom: 14px; }
+  .auth-field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .auth-field input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: var(--font); font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .auth-field input:focus { border-color: var(--red); background: #fff; }
+  .auth-btn { width: 100%; margin-top: 8px; padding: 13px; background: linear-gradient(135deg, var(--red), var(--orange)); color: #fff; border: none; border-radius: 12px; font-family: var(--font); font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+  .auth-btn:hover { opacity: 0.9; }
+  .auth-error { color: var(--red); font-size: 12px; margin-top: 10px; min-height: 16px; }
+
+  /* ── SIDEBAR LAYOUT ── */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; position: fixed; top: 0; bottom: 0; left: 0; z-index: 10; display: flex; flex-direction: column; }
+  .sidebar-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; padding: 0 8px; }
+  .sidebar-logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--red), var(--orange)); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .sidebar-logo-text { font-size: 16px; font-weight: 600; color: var(--text); }
+  .sidebar-logo-text span { display: block; font-size: 11px; font-weight: 400; color: var(--text2); }
+
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; color: var(--text2); font-size: 14px; font-weight: 500; transition: all 0.15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--bg); color: var(--text); }
+  .nav-item.active { background: var(--red-light); color: var(--red); }
+  .nav-item .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+  .sidebar-bottom { margin-top: auto; }
+  .sidebar-user { padding: 12px; background: var(--bg); border-radius: 10px; }
+  .sidebar-user-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .sidebar-user-role { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .sidebar-actions { display: flex; gap: 6px; margin-top: 8px; }
+
+  .main { margin-left: 240px; padding: 32px; flex: 1; max-width: calc(100vw - 240px); }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── PAGE HEADER ── */
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .page-subtitle { color: var(--text2); font-size: 14px; margin-top: 4px; }
+
+  /* ── CARDS ── */
+  .card { background: var(--surface); border-radius: 16px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+  .card-section-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── STAT PILLS ── */
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-pill { background: var(--surface); border-radius: 14px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); flex: 1; min-width: 140px; }
+  .stat-pill-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-pill-value { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .stat-pill-unit { font-size: 13px; font-weight: 400; color: var(--text2); margin-left: 3px; }
+  .stat-pill-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .stat-pill.red .stat-pill-value { color: var(--red); }
+  .stat-pill.orange .stat-pill-value { color: var(--orange); }
+  .stat-pill.green .stat-pill-value { color: var(--green); }
+
+  /* ── FORMS ── */
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; color: var(--text); font-family: var(--font); font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--red); background: #fff; }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; gap: 12px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  /* ── BUTTONS ── */
+  .btn { padding: 10px 18px; border-radius: 10px; font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--red); color: #fff; }
+  .btn-primary:hover { background: #e0332a; }
+  .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-danger { background: var(--red-light); color: var(--red); }
+  .btn-danger:hover { background: var(--red-mid); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-icon { background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 16px; transition: background 0.15s; }
+  .btn-icon:hover { background: var(--bg); }
+  .btn-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* ── TABLE ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text2); vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--bg); }
+  .data-table td.bold { color: var(--text); font-weight: 500; }
+
+  /* ── BADGES ── */
+  .badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .badge-orange { background: var(--orange-light); color: var(--orange); }
+  .badge-green { background: var(--green-light); color: var(--green); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-gray { background: var(--bg); color: var(--text2); }
+
+  /* ── ABNORMAL VALUE ── */
+  .val-abnormal { color: var(--red); font-weight: 600; }
+  .val-normal { color: var(--text); }
+
+  /* ── CHART ── */
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap-sm { position: relative; height: 160px; }
+
+  /* ── PARAMETER ROWS (lab form) ── */
+  .param-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+  .param-row-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto; gap: 8px; margin-bottom: 4px; }
+  .param-row-header span { font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 4px; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone { border: 2px dashed var(--border2); border-radius: 12px; padding: 28px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-zone:hover, .upload-zone.drag-over { border-color: var(--red); background: var(--red-light); }
+  .upload-zone input { display: none; }
+  .upload-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .upload-zone-text { color: var(--text2); font-size: 13px; }
+  .upload-zone-text strong { color: var(--red); }
+
+  /* ── HISTORY ITEMS ── */
+  .history-item { background: var(--surface); border-radius: 14px; padding: 16px 20px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; gap: 16px; align-items: flex-start; }
+  .history-item-date { min-width: 56px; text-align: center; background: var(--red-light); border-radius: 10px; padding: 8px 6px; }
+  .history-item-date .day { font-size: 20px; font-weight: 700; color: var(--red); line-height: 1; }
+  .history-item-date .mon { font-size: 10px; font-weight: 600; color: var(--red); text-transform: uppercase; }
+  .history-item-body { flex: 1; }
+  .history-item-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .history-item-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .history-item-files { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .file-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg); border-radius: 6px; font-size: 11px; color: var(--text2); text-decoration: none; border: 1px solid var(--border); transition: all 0.15s; }
+  .file-chip:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
+
+  /* ── PROFILE GRID ── */
+  .profile-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .profile-info-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .profile-info-item:nth-last-child(-n+2) { border-bottom: none; }
+  .profile-info-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+  .profile-info-value { font-size: 15px; color: var(--text); font-weight: 500; }
+  .profile-info-value.empty { color: var(--text3); font-weight: 400; font-style: italic; }
+
+  /* ── DOCUMENT GRID ── */
+  .doc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .doc-card { background: var(--surface); border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.15s; text-decoration: none; border: 1px solid var(--border); }
+  .doc-card:hover { border-color: var(--red); box-shadow: 0 4px 12px rgba(255,59,48,0.12); }
+  .doc-card-icon { font-size: 28px; margin-bottom: 8px; }
+  .doc-card-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-card-meta { font-size: 11px; color: var(--text2); }
+  .doc-card-actions { display: flex; gap: 4px; margin-top: 8px; }
+
+  /* ── TREND SELECTOR ── */
+  .trend-selector { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .trend-btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .trend-btn.active { background: var(--red); color: #fff; border-color: var(--red); }
+  .trend-btn:hover:not(.active) { border-color: var(--red); color: var(--red); }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 500; backdrop-filter: blur(4px); }
+  .modal { background: var(--surface); border-radius: 20px; padding: 28px; width: 90%; max-width: 860px; max-height: 88vh; overflow-y: auto; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-sm { max-width: 460px; }
+  .modal-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+  .modal-close { position: absolute; top: 20px; right: 20px; background: var(--bg); border: none; border-radius: 8px; width: 32px; height: 32px; font-size: 16px; cursor: pointer; color: var(--text2); transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; background: var(--text); border-radius: 12px; color: #fff; font-size: 13px; font-weight: 500; z-index: 1000; transform: translateY(80px); opacity: 0; transition: all 0.3s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text3); }
+  .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; margin-top: 6px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  .ocr-result { background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+  .ocr-result-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .ocr-text { font-size: 11px; color: var(--text2); white-space: pre-wrap; max-height: 120px; overflow-y: auto; font-family: monospace; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; padding: 16px; max-width: 100%; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .param-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div class="auth-screen" id="screen-setup" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">❤️</div>
+    <h1>Health Tracker</h1>
+    <div class="auth-subtitle">Pierwsze uruchomienie</div>
+    <div class="auth-desc">Utwórz konto administratora. Będziesz mógł dodawać kolejnych użytkowników z poziomu aplikacji.</div>
+    <div class="auth-field"><label>Login</label><input type="text" id="setup-username" onkeydown="if(event.key==='Enter')doSetup()"></div>
+    <div class="auth-field"><label>Hasło</label><input type="password" id="setup-password" onkeydown="if(event.key==='Enter')doSetup()"></div>
+    <div class="auth-field"><label>Powtórz hasło</label><input type="password" id="setup-password2" onkeydown="if(event.key==='Enter')doSetup()"></div>
+    <button class="auth-btn" onclick="doSetup()">Utwórz konto i zaloguj</button>
+    <div class="auth-error" id="setup-error"></div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div class="auth-screen" id="screen-login" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">❤️</div>
+    <h1>Health Tracker</h1>
+    <div class="auth-subtitle">Zaloguj się</div>
+    <div class="auth-field"><label>Login</label><input type="text" id="login-username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="auth-field"><label>Hasło</label><input type="password" id="login-password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="auth-btn" onclick="doLogin()">Zaloguj</button>
+    <div class="auth-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="layout" id="main-app" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">❤️</div>
+      <div class="sidebar-logo-text">Health<span>Tracker</span></div>
+    </div>
+    <nav>
+      <button class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">📊</span> Przegląd</button>
+      <button class="nav-item" onclick="showPage('profile',this)"><span class="nav-icon">👤</span> Profil</button>
+      <button class="nav-item" onclick="showPage('lab',this)"><span class="nav-icon">🧪</span> Badania krwi</button>
+      <button class="nav-item" onclick="showPage('history',this)"><span class="nav-icon">📋</span> Historia medyczna</button>
+      <button class="nav-item" onclick="showPage('documents',this)"><span class="nav-icon">📁</span> Dokumenty</button>
+      <button class="nav-item" id="admin-nav" style="display:none" onclick="showPage('admin',this)"><span class="nav-icon">⚙️</span> Administracja</button>
+      <button class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">🔒</span> Ustawienia</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user">
+        <div class="sidebar-user-name" id="sidebar-username">—</div>
+        <div class="sidebar-user-role" id="sidebar-role">użytkownik</div>
+        <div class="sidebar-actions">
+          <button class="btn btn-secondary btn-sm" style="width:100%" onclick="doLogout()">Wyloguj</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="page-overview" class="page active">
+      <div class="page-header">
+        <div class="page-title">Przegląd</div>
+        <div class="page-subtitle" id="overview-subtitle">Twoje dane zdrowotne</div>
+      </div>
+      <div class="stat-row" id="overview-stats"></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Ostatnie badania krwi</div>
+          <div id="overview-lab"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ostatnie wpisy w historii</div>
+          <div id="overview-history"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Trendy parametrów</div>
+        <div class="trend-selector" id="trend-selector"></div>
+        <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="page-profile" class="page">
+      <div class="page-header">
+        <div class="page-title">Profil zdrowotny</div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-section-title">Dane osobowe</div>
+          <div class="form-row cols-2">
+            <div class="form-group"><label>Imię</label><input type="text" id="p-firstname"></div>
+            <div class="form-group"><label>Nazwisko</label><input type="text" id="p-lastname"></div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="form-group"><label>Data urodzenia</label><input type="date" id="p-birthdate"></div>
+            <div class="form-group"><label>Grupa krwi</label>
+              <select id="p-bloodtype">
+                <option value="">— nie podano —</option>
+                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                <option>AB+</option><option>AB-</option><option>0+</option><option>0-</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="form-group"><label>Wzrost (cm)</label><input type="number" id="p-height" min="100" max="250"></div>
+            <div class="form-group"><label>Waga (kg)</label><input type="number" id="p-weight" step="0.1" min="30" max="300"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-section-title">Dane medyczne</div>
+          <div class="form-group"><label>Lekarz prowadzący</label><input type="text" id="p-doctor"></div>
+          <div class="form-group"><label>Telefon do lekarza</label><input type="tel" id="p-doctorphone"></div>
+          <div class="form-group"><label>Alergie</label><textarea id="p-allergies" rows="2"></textarea></div>
+          <div class="form-group"><label>Choroby przewlekłe</label><textarea id="p-chronic" rows="2"></textarea></div>
+          <div class="form-group"><label>Notatki</label><textarea id="p-notes" rows="2"></textarea></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveProfile()">Zapisz profil</button>
+      </div>
+    </div>
+
+    <!-- LAB RESULTS -->
+    <div id="page-lab" class="page">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="page-title">Badania krwi</div>
+          <div class="page-subtitle">Historia wyników laboratoryjnych</div>
+        </div>
+        <button class="btn btn-primary" onclick="openLabModal()">+ Dodaj badanie</button>
+      </div>
+      <div id="lab-list"></div>
+    </div>
+
+    <!-- MEDICAL HISTORY -->
+    <div id="page-history" class="page">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="page-title">Historia medyczna</div>
+          <div class="page-subtitle">Wizyty, zabiegi, szczepienia, operacje</div>
+        </div>
+        <button class="btn btn-primary" onclick="openHistoryModal()">+ Dodaj wpis</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div id="page-documents" class="page">
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="page-title">Dokumenty</div>
+          <div class="page-subtitle">PDF, zdjęcia RTG, wyniki, recepty</div>
+        </div>
+        <button class="btn btn-primary" onclick="el('doc-upload-input').click()">+ Wgraj plik</button>
+      </div>
+      <input type="file" id="doc-upload-input" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadDocuments(this)">
+      <div id="doc-grid" class="doc-grid"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="page-admin" class="page">
+      <div class="page-header"><div class="page-title">Administracja</div></div>
+      <div class="card">
+        <div class="card-section-title">Użytkownicy</div>
+        <div id="admin-users-wrap"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-section-title">Dodaj użytkownika</div>
+        <div class="form-row cols-3">
+          <div class="form-group"><label>Login</label><input type="text" id="new-username"></div>
+          <div class="form-group"><label>Hasło</label><input type="password" id="new-password"></div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:8px;padding-bottom:2px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--text2);text-transform:none;letter-spacing:0">
+              <input type="checkbox" id="new-is-admin" style="width:16px;height:16px;accent-color:var(--red)">Admin
+            </label>
+            <button class="btn btn-primary" onclick="createUser()">Dodaj</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="page-header"><div class="page-title">Ustawienia</div></div>
+      <div class="card">
+        <div class="card-section-title">Zmiana hasła</div>
+        <div class="form-row cols-3">
+          <div class="form-group"><label>Obecne hasło</label><input type="password" id="cp-current"></div>
+          <div class="form-group"><label>Nowe hasło</label><input type="password" id="cp-new"></div>
+          <div class="form-group"><label>Powtórz nowe</label><input type="password" id="cp-new2"></div>
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">Zmień hasło</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══ LAB MODAL ══ -->
+<div class="modal-overlay" id="lab-modal" style="display:none" onclick="if(event.target===this)closeLabModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeLabModal()">✕</button>
+    <div class="modal-title" id="lab-modal-title">Nowe badanie krwi</div>
+
+    <div class="form-row cols-2" style="margin-bottom:16px">
+      <div class="form-group"><label>Data badania</label><input type="date" id="lab-date"></div>
+      <div class="form-group"><label>Laboratorium</label><input type="text" id="lab-name" placeholder="np. Diagnostyka, Alab..."></div>
+    </div>
+    <div class="form-group"><label>Notatki</label><input type="text" id="lab-notes" placeholder="Opcjonalne uwagi"></div>
+
+    <hr class="divider">
+
+    <!-- OCR UPLOAD -->
+    <div class="ocr-section" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:8px">Wgraj PDF z wynikami (OCR)</div>
+      <div class="upload-zone" id="ocr-zone" onclick="el('ocr-input').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleOcrDrop(event)">
+        <input type="file" id="ocr-input" accept=".pdf,.jpg,.png" style="display:none" onchange="runOcr(this)">
+        <div class="upload-zone-icon">📄</div>
+        <div class="upload-zone-text"><strong>Kliknij lub przeciągnij PDF</strong><br>System spróbuje automatycznie odczytać parametry</div>
+      </div>
+      <div id="ocr-status" style="margin-top:8px;font-size:12px;color:var(--text2)"></div>
+      <div id="ocr-result-box" style="display:none" class="ocr-result">
+        <div class="ocr-result-title">Odczytany tekst (fragment)</div>
+        <div class="ocr-text" id="ocr-raw-text"></div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">Parametry</div>
+      <button class="btn btn-secondary btn-sm" onclick="addParamRow()">+ Dodaj parametr</button>
+    </div>
+    <div class="param-row-header">
+      <span>Nazwa parametru</span><span>Wartość</span><span>Jednostka</span><span>Ref. min</span><span>Ref. max</span><span></span>
+    </div>
+    <div id="param-rows"></div>
+
+    <div class="btn-row" style="margin-top:20px">
+      <button class="btn btn-primary" id="lab-save-btn" onclick="saveLabResult()">Zapisz badanie</button>
+      <button class="btn btn-secondary" onclick="closeLabModal()">Anuluj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HISTORY MODAL ══ -->
+<div class="modal-overlay" id="history-modal" style="display:none" onclick="if(event.target===this)closeHistoryModal()">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeHistoryModal()">✕</button>
+    <div class="modal-title" id="history-modal-title">Nowy wpis</div>
+    <div class="form-row cols-2">
+      <div class="form-group"><label>Data</label><input type="date" id="h-date"></div>
+      <div class="form-group"><label>Kategoria</label>
+        <select id="h-category">
+          <option value="wizyta">Wizyta lekarska</option>
+          <option value="zabieg">Zabieg</option>
+          <option value="operacja">Operacja</option>
+          <option value="szczepienie">Szczepienie</option>
+          <option value="hospitalizacja">Hospitalizacja</option>
+          <option value="inne">Inne</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Tytuł</label><input type="text" id="h-title" placeholder="np. Wizyta u kardiologa"></div>
+    <div class="form-group"><label>Opis</label><textarea id="h-desc" rows="4" placeholder="Diagnoza, zalecenia, wyniki..."></textarea></div>
+
+    <div class="form-group">
+      <label>Załącz pliki</label>
+      <div id="h-files-list" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px"></div>
+      <button class="btn btn-secondary btn-sm" onclick="el('h-file-input').click()">+ Wgraj plik</button>
+      <input type="file" id="h-file-input" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="uploadHistoryFiles(this)">
+    </div>
+
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn btn-primary" id="history-save-btn" onclick="saveHistory()">Zapisz wpis</button>
+      <button class="btn btn-secondary" onclick="closeHistoryModal()">Anuluj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESET PWD MODAL ══ -->
+<div class="modal-overlay" id="reset-modal" style="display:none" onclick="if(event.target===this)closeResetModal()">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeResetModal()">✕</button>
+    <div class="modal-title">Resetuj hasło</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px" id="reset-label"></p>
+    <div class="form-group"><label>Nowe hasło</label><input type="password" id="reset-pwd"></div>
+    <div class="form-group"><label>Powtórz hasło</label><input type="password" id="reset-pwd2"></div>
+    <button class="btn btn-primary" onclick="doResetPassword()" style="margin-top:8px">Ustaw hasło</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+let currentUser = null;
+let labResults = [], historyItems = [], documents = [], trends = [];
+let editingLabId = null, editingHistoryId = null, resetUserId = null;
+let trendChart = null, activeTrend = null;
+let pendingHistoryFileIds = [];
+
+// ==================== API ====================
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin' };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.json();
+}
+
+// ==================== BOOT ====================
+async function boot() {
+  try {
+    const { setup_required } = await api('GET', '/auth/setup-required');
+    if (setup_required) { showScreen('setup'); return; }
+    try {
+      currentUser = await api('GET', '/auth/me');
+      await enterApp();
+    } catch { showScreen('login'); }
+  } catch { showScreen('login'); }
+}
+
+function showScreen(name) {
+  el('screen-setup').style.display = 'none';
+  el('screen-login').style.display = 'none';
+  el('main-app').style.display = 'none';
+  if (name === 'setup') { el('screen-setup').style.display = 'flex'; setTimeout(() => el('setup-username').focus(), 50); }
+  else if (name === 'login') { el('screen-login').style.display = 'flex'; setTimeout(() => el('login-username').focus(), 50); }
+  else el('main-app').style.display = 'flex';
+}
+
+async function enterApp() {
+  el('sidebar-username').textContent = currentUser.username;
+  el('sidebar-role').textContent = currentUser.is_admin ? 'Administrator' : 'Użytkownik';
+  if (currentUser.is_admin) el('admin-nav').style.display = 'flex';
+  await loadAll();
+  showScreen('app');
+}
+
+async function loadAll() {
+  const today = new Date().toLocaleDateString('pl-PL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  el('overview-subtitle').textContent = today.charAt(0).toUpperCase() + today.slice(1);
+  [labResults, historyItems, documents, trends] = await Promise.all([
+    api('GET', '/api/lab-results'),
+    api('GET', '/api/history'),
+    api('GET', '/api/files'),
+    api('GET', '/api/lab-results/trends')
+  ]);
+  renderOverview();
+  renderLab();
+  renderHistory();
+  renderDocuments();
+  renderTrendSelector();
+}
+
+// ==================== AUTH ====================
+async function doSetup() {
+  const username = el('setup-username').value.trim();
+  const password = el('setup-password').value;
+  const password2 = el('setup-password2').value;
+  el('setup-error').textContent = '';
+  if (!username || !password) { el('setup-error').textContent = 'Wypełnij wszystkie pola'; return; }
+  if (password !== password2) { el('setup-error').textContent = 'Hasła nie są identyczne'; return; }
+  if (password.length < 6) { el('setup-error').textContent = 'Min. 6 znaków'; return; }
+  try {
+    currentUser = await api('POST', '/auth/setup', { username, password });
+    await enterApp();
+  } catch(e) { el('setup-error').textContent = e.message; }
+}
+
+async function doLogin() {
+  const username = el('login-username').value.trim();
+  const password = el('login-password').value;
+  el('login-error').textContent = '';
+  if (!username || !password) { el('login-error').textContent = 'Wypełnij wszystkie pola'; return; }
+  try {
+    currentUser = await api('POST', '/auth/login', { username, password });
+    el('login-password').value = '';
+    await enterApp();
+  } catch { el('login-error').textContent = 'Nieprawidłowy login lub hasło'; }
+}
+
+async function doLogout() {
+  await api('POST', '/auth/logout').catch(() => {});
+  currentUser = null; labResults = []; historyItems = []; documents = []; trends = [];
+  if (trendChart) { trendChart.destroy(); trendChart = null; }
+  el('admin-nav').style.display = 'none';
+  showScreen('login');
+}
+
+async function changePassword() {
+  const current = el('cp-current').value, np = el('cp-new').value, np2 = el('cp-new2').value;
+  if (!current || !np) { toast('Wypełnij wszystkie pola', 'error'); return; }
+  if (np !== np2) { toast('Hasła nie są identyczne', 'error'); return; }
+  if (np.length < 6) { toast('Min. 6 znaków', 'error'); return; }
+  try {
+    await api('POST', '/auth/change-password', { current_password: current, new_password: np });
+    el('cp-current').value = ''; el('cp-new').value = ''; el('cp-new2').value = '';
+    toast('✓ Hasło zmienione', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== OVERVIEW ====================
+function renderOverview() {
+  // Stats
+  const lastLab = labResults[0];
+  const lastHistory = historyItems[0];
+  const labCount = labResults.length;
+  const histCount = historyItems.length;
+  const docCount = documents.length;
+  const abnormalCount = lastLab ? lastLab.parameters.filter(p => p.is_abnormal).length : 0;
+
+  el('overview-stats').innerHTML = `
+    <div class="stat-pill ${abnormalCount > 0 ? 'red' : 'green'}">
+      <div class="stat-pill-label">Wyniki poza normą</div>
+      <div class="stat-pill-value">${lastLab ? abnormalCount : '—'}</div>
+      <div class="stat-pill-sub">${lastLab ? 'w ostatnim badaniu' : 'brak badań'}</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-pill-label">Badania krwi</div>
+      <div class="stat-pill-value">${labCount}</div>
+      <div class="stat-pill-sub">${lastLab ? 'ostatnie: ' + lastLab.date : 'brak'}</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-pill-label">Wpisy medyczne</div>
+      <div class="stat-pill-value">${histCount}</div>
+      <div class="stat-pill-sub">${lastHistory ? 'ostatni: ' + lastHistory.date : 'brak'}</div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-pill-label">Dokumenty</div>
+      <div class="stat-pill-value">${docCount}</div>
+      <div class="stat-pill-sub">pliki w archiwum</div>
+    </div>`;
+
+  // Last lab
+  if (!lastLab) {
+    el('overview-lab').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><p>Brak badań krwi</p></div>';
+  } else {
+    const params = lastLab.parameters.slice(0, 6);
+    el('overview-lab').innerHTML = `
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">${lastLab.date} · ${lastLab.lab_name || 'brak nazwy'}</div>
+      ${params.map(p => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+        <span style="color:var(--text2)">${p.name}</span>
+        <span class="${p.is_abnormal ? 'val-abnormal' : 'val-normal'}">${p.value ?? p.value_text} ${p.unit || ''} ${p.is_abnormal ? '⚠️' : ''}</span>
+      </div>`).join('')}
+      ${lastLab.parameters.length > 6 ? `<div style="font-size:12px;color:var(--text3);margin-top:8px">+${lastLab.parameters.length-6} więcej parametrów</div>` : ''}`;
+  }
+
+  // Last history
+  if (!historyItems.length) {
+    el('overview-history').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>Brak wpisów</p></div>';
+  } else {
+    el('overview-history').innerHTML = historyItems.slice(0, 4).map(h => `
+      <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start">
+        <span class="badge ${categoryBadge(h.category)}">${categoryLabel(h.category)}</span>
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text)">${h.title}</div>
+          <div style="font-size:11px;color:var(--text3)">${h.date}</div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+// ==================== LAB RESULTS ====================
+function renderLab() {
+  if (!labResults.length) {
+    el('lab-list').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><div class="page-subtitle">Brak badań krwi</div><p>Dodaj pierwsze badanie klikając przycisk powyżej</p></div>';
+    return;
+  }
+  el('lab-list').innerHTML = labResults.map(r => {
+    const abnormal = r.parameters.filter(p => p.is_abnormal);
+    return `<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div>
+          <div style="font-size:16px;font-weight:600;color:var(--text)">${r.date} <span style="font-weight:400;color:var(--text2);font-size:14px">${r.lab_name ? '· ' + r.lab_name : ''}</span></div>
+          ${r.notes ? `<div style="font-size:13px;color:var(--text2);margin-top:2px">${r.notes}</div>` : ''}
+          ${abnormal.length ? `<div style="margin-top:6px"><span class="badge badge-red">⚠️ ${abnormal.length} poza normą</span></div>` : '<div style="margin-top:6px"><span class="badge badge-green">✓ Wszystkie w normie</span></div>'}
+        </div>
+        <div class="btn-row">
+          ${r.file ? `<a href="/api/files/${r.file.id}/view" target="_blank" class="btn btn-secondary btn-sm">📄 PDF</a>` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="editLabResult(${r.id})">Edytuj</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteLabResult(${r.id})">Usuń</button>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Parametr</th><th>Wartość</th><th>Jednostka</th><th>Norma</th><th>Status</th></tr></thead>
+        <tbody>
+          ${r.parameters.map(p => `<tr>
+            <td class="bold">${p.name}</td>
+            <td class="${p.is_abnormal ? 'val-abnormal' : 'val-normal'} bold">${p.value ?? p.value_text ?? '—'}</td>
+            <td>${p.unit || '—'}</td>
+            <td style="color:var(--text2)">${p.ref_text || (p.ref_min != null && p.ref_max != null ? p.ref_min + ' – ' + p.ref_max : '—')}</td>
+            <td>${p.is_abnormal ? '<span class="badge badge-red">Poza normą</span>' : '<span class="badge badge-green">Norma</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function openLabModal(id = null) {
+  editingLabId = id;
+  el('lab-modal-title').textContent = id ? 'Edytuj badanie' : 'Nowe badanie krwi';
+  el('lab-date').value = new Date().toISOString().split('T')[0];
+  el('lab-name').value = '';
+  el('lab-notes').value = '';
+  el('param-rows').innerHTML = '';
+  el('ocr-status').textContent = '';
+  el('ocr-result-box').style.display = 'none';
+
+  if (id) {
+    const r = labResults.find(x => x.id === id);
+    if (r) {
+      el('lab-date').value = r.date;
+      el('lab-name').value = r.lab_name || '';
+      el('lab-notes').value = r.notes || '';
+      r.parameters.forEach(p => addParamRow(p));
+    }
+  }
+  if (!id) addParamRow();
+  el('lab-modal').style.display = 'flex';
+}
+
+function closeLabModal() { el('lab-modal').style.display = 'none'; editingLabId = null; }
+
+function addParamRow(p = {}) {
+  const wrap = el('param-rows');
+  const div = document.createElement('div');
+  div.className = 'param-row';
+  div.innerHTML = `
+    <input type="text" placeholder="np. Cholesterol" value="${p.name || ''}" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none">
+    <input type="number" placeholder="0.00" step="0.01" value="${p.value ?? ''}" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none">
+    <input type="text" placeholder="mmol/L" value="${p.unit || ''}" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none">
+    <input type="number" placeholder="min" step="0.01" value="${p.ref_min ?? ''}" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none">
+    <input type="number" placeholder="max" step="0.01" value="${p.ref_max ?? ''}" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;color:var(--text);outline:none">
+    <button class="btn-icon" onclick="this.parentElement.remove()" style="color:var(--text2)">✕</button>`;
+  wrap.appendChild(div);
+}
+
+function collectParams() {
+  const rows = el('param-rows').querySelectorAll('.param-row');
+  const params = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0].value.trim();
+    if (!name) return;
+    const value = inputs[1].value !== '' ? parseFloat(inputs[1].value) : null;
+    const unit = inputs[2].value.trim();
+    const ref_min = inputs[3].value !== '' ? parseFloat(inputs[3].value) : null;
+    const ref_max = inputs[4].value !== '' ? parseFloat(inputs[4].value) : null;
+    const is_abnormal = value !== null && ref_min !== null && ref_max !== null && (value < ref_min || value > ref_max);
+    params.push({ name, value, unit, ref_min, ref_max, ref_text: ref_min != null && ref_max != null ? `${ref_min} – ${ref_max}` : '', is_abnormal });
+  });
+  return params;
+}
+
+async function saveLabResult() {
+  const date = el('lab-date').value;
+  if (!date) { toast('Wybierz datę', 'error'); return; }
+  const data = { date, lab_name: el('lab-name').value.trim(), notes: el('lab-notes').value.trim(), parameters: collectParams() };
+  const btn = el('lab-save-btn'); btn.disabled = true;
+  try {
+    if (editingLabId) await api('PUT', `/api/lab-results/${editingLabId}`, data);
+    else await api('POST', '/api/lab-results', data);
+    [labResults, trends] = await Promise.all([api('GET', '/api/lab-results'), api('GET', '/api/lab-results/trends')]);
+    renderLab(); renderOverview(); renderTrendSelector();
+    closeLabModal();
+    toast('✓ Badanie zapisane', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+
+function editLabResult(id) { openLabModal(id); }
+
+async function deleteLabResult(id) {
+  if (!confirm('Usunąć to badanie?')) return;
+  try {
+    await api('DELETE', `/api/lab-results/${id}`);
+    [labResults, trends] = await Promise.all([api('GET', '/api/lab-results'), api('GET', '/api/lab-results/trends')]);
+    renderLab(); renderOverview(); renderTrendSelector();
+    toast('Badanie usunięte', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== OCR ====================
+async function handleOcrDrop(event) {
+  event.preventDefault();
+  el('ocr-zone').classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file) await processOcrFile(file);
+}
+
+async function runOcr(input) {
+  const file = input.files[0];
+  if (file) await processOcrFile(file);
+}
+
+async function processOcrFile(file) {
+  el('ocr-status').textContent = '⏳ Odczytuję plik...';
+  el('ocr-result-box').style.display = 'none';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch('/api/ocr', { method: 'POST', body: fd, credentials: 'same-origin' });
+    if (!r.ok) throw new Error('Błąd OCR');
+    const data = await r.json();
+    el('ocr-raw-text').textContent = data.raw_text || '(brak tekstu)';
+    el('ocr-result-box').style.display = 'block';
+
+    if (data.parameters && data.parameters.length > 0) {
+      el('param-rows').innerHTML = '';
+      data.parameters.forEach(p => addParamRow(p));
+      el('ocr-status').textContent = `✓ Odczytano ${data.parameters.length} parametrów. Sprawdź i popraw jeśli potrzeba.`;
+    } else {
+      el('ocr-status').textContent = '⚠️ Nie udało się automatycznie odczytać parametrów. Wpisz ręcznie.';
+    }
+  } catch(e) {
+    el('ocr-status').textContent = '✗ Błąd: ' + e.message;
+  }
+}
+
+// ==================== MEDICAL HISTORY ====================
+function renderHistory() {
+  if (!historyItems.length) {
+    el('history-list').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="page-subtitle">Brak wpisów</div><p>Dodaj pierwszą wizytę, zabieg lub szczepienie</p></div>';
+    return;
+  }
+  el('history-list').innerHTML = historyItems.map(h => {
+    const d = new Date(h.date);
+    const day = d.getDate();
+    const mon = d.toLocaleDateString('pl-PL', { month: 'short' });
+    return `<div class="history-item">
+      <div class="history-item-date"><div class="day">${day}</div><div class="mon">${mon}</div></div>
+      <div class="history-item-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <span class="badge ${categoryBadge(h.category)}" style="margin-bottom:6px">${categoryLabel(h.category)}</span>
+            <div class="history-item-title">${h.title}</div>
+            ${h.description ? `<div class="history-item-desc">${h.description}</div>` : ''}
+          </div>
+          <div class="btn-row" style="flex-shrink:0;margin-left:12px">
+            <button class="btn btn-secondary btn-sm" onclick="editHistory(${h.id})">Edytuj</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteHistory(${h.id})">Usuń</button>
+          </div>
+        </div>
+        ${h.files && h.files.length ? `<div class="history-item-files">${h.files.map(f => `<a href="/api/files/${f.id}/view" target="_blank" class="file-chip">${fileIcon(f.mime_type)} ${f.original_name}</a>`).join('')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openHistoryModal(id = null) {
+  editingHistoryId = id;
+  pendingHistoryFileIds = [];
+  el('history-modal-title').textContent = id ? 'Edytuj wpis' : 'Nowy wpis';
+  el('h-date').value = new Date().toISOString().split('T')[0];
+  el('h-title').value = '';
+  el('h-desc').value = '';
+  el('h-category').value = 'wizyta';
+  el('h-files-list').innerHTML = '';
+
+  if (id) {
+    const h = historyItems.find(x => x.id === id);
+    if (h) {
+      el('h-date').value = h.date;
+      el('h-title').value = h.title;
+      el('h-desc').value = h.description || '';
+      el('h-category').value = h.category || 'inne';
+      pendingHistoryFileIds = h.files ? h.files.map(f => f.id) : [];
+      renderHistoryFileChips();
+    }
+  }
+  el('history-modal').style.display = 'flex';
+}
+
+function closeHistoryModal() { el('history-modal').style.display = 'none'; editingHistoryId = null; pendingHistoryFileIds = []; }
+
+function renderHistoryFileChips() {
+  el('h-files-list').innerHTML = pendingHistoryFileIds.map(fid => {
+    const f = documents.find(d => d.id === fid);
+    if (!f) return '';
+    return `<span class="file-chip">${fileIcon(f.mime_type)} ${f.original_name} <button onclick="removeHistoryFile(${fid})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;margin-left:2px">✕</button></span>`;
+  }).join('');
+}
+
+function removeHistoryFile(fid) {
+  pendingHistoryFileIds = pendingHistoryFileIds.filter(id => id !== fid);
+  renderHistoryFileChips();
+}
+
+async function uploadHistoryFiles(input) {
+  for (const file of input.files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('category', 'historia');
+    fd.append('date', el('h-date').value || '');
+    try {
+      const r = await fetch('/api/files', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const data = await r.json();
+      pendingHistoryFileIds.push(data.id);
+      documents.push({ id: data.id, original_name: file.name, mime_type: file.type });
+      renderHistoryFileChips();
+    } catch(e) { toast('Błąd uploadu: ' + e.message, 'error'); }
+  }
+  input.value = '';
+}
+
+async function saveHistory() {
+  const date = el('h-date').value, title = el('h-title').value.trim();
+  if (!date || !title) { toast('Wypełnij datę i tytuł', 'error'); return; }
+  const data = { date, title, description: el('h-desc').value.trim(), category: el('h-category').value, file_ids: pendingHistoryFileIds };
+  const btn = el('history-save-btn'); btn.disabled = true;
+  try {
+    if (editingHistoryId) await api('PUT', `/api/history/${editingHistoryId}`, data);
+    else await api('POST', '/api/history', data);
+    historyItems = await api('GET', '/api/history');
+    renderHistory(); renderOverview();
+    closeHistoryModal();
+    toast('✓ Wpis zapisany', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+
+function editHistory(id) { openHistoryModal(id); }
+
+async function deleteHistory(id) {
+  if (!confirm('Usunąć ten wpis?')) return;
+  try {
+    await api('DELETE', `/api/history/${id}`);
+    historyItems = await api('GET', '/api/history');
+    renderHistory(); renderOverview();
+    toast('Wpis usunięty', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== DOCUMENTS ====================
+function renderDocuments() {
+  if (!documents.length) {
+    el('doc-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📁</div><div class="page-subtitle">Brak dokumentów</div><p>Wgraj PDF, zdjęcia RTG lub inne pliki medyczne</p></div>';
+    return;
+  }
+  el('doc-grid').innerHTML = documents.map(f => `
+    <div class="doc-card">
+      <a href="/api/files/${f.id}/view" target="_blank" style="text-decoration:none">
+        <div class="doc-card-icon">${fileIcon(f.mime_type)}</div>
+        <div class="doc-card-name" title="${f.original_name}">${f.original_name}</div>
+        <div class="doc-card-meta">${formatSize(f.size_bytes)}${f.date ? ' · ' + f.date : ''}</div>
+      </a>
+      <div class="doc-card-actions">
+        <a href="/api/files/${f.id}/view" target="_blank" class="btn btn-secondary btn-sm" style="flex:1;text-align:center;text-decoration:none">Otwórz</a>
+        <button class="btn btn-danger btn-sm" onclick="deleteDocument(${f.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function uploadDocuments(input) {
+  for (const file of input.files) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('category', 'dokument');
+    fd.append('date', new Date().toISOString().split('T')[0]);
+    try {
+      const r = await fetch('/api/files', { method: 'POST', body: fd, credentials: 'same-origin' });
+      if (!r.ok) throw new Error('Upload failed');
+      toast(`✓ Wgrano: ${file.name}`, 'success');
+    } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+  }
+  documents = await api('GET', '/api/files');
+  renderDocuments();
+  input.value = '';
+}
+
+async function deleteDocument(id) {
+  if (!confirm('Usunąć ten plik?')) return;
+  try {
+    await api('DELETE', `/api/files/${id}`);
+    documents = await api('GET', '/api/files');
+    renderDocuments();
+    toast('Plik usunięty', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== PROFILE ====================
+async function loadProfile() {
+  try {
+    const p = await api('GET', '/api/profile');
+    el('p-firstname').value = p.first_name || '';
+    el('p-lastname').value = p.last_name || '';
+    el('p-birthdate').value = p.birth_date || '';
+    el('p-bloodtype').value = p.blood_type || '';
+    el('p-height').value = p.height_cm || '';
+    el('p-weight').value = p.weight_kg || '';
+    el('p-doctor').value = p.doctor_name || '';
+    el('p-doctorphone').value = p.doctor_phone || '';
+    el('p-allergies').value = p.allergies || '';
+    el('p-chronic').value = p.chronic_conditions || '';
+    el('p-notes').value = p.notes || '';
+  } catch(e) { console.error(e); }
+}
+
+async function saveProfile() {
+  const data = {
+    first_name: el('p-firstname').value.trim(), last_name: el('p-lastname').value.trim(),
+    birth_date: el('p-birthdate').value || null, blood_type: el('p-bloodtype').value || null,
+    height_cm: el('p-height').value ? parseFloat(el('p-height').value) : null,
+    weight_kg: el('p-weight').value ? parseFloat(el('p-weight').value) : null,
+    doctor_name: el('p-doctor').value.trim(), doctor_phone: el('p-doctorphone').value.trim(),
+    allergies: el('p-allergies').value.trim(), chronic_conditions: el('p-chronic').value.trim(),
+    notes: el('p-notes').value.trim()
+  };
+  try {
+    await api('PUT', '/api/profile', data);
+    toast('✓ Profil zapisany', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== TRENDS ====================
+function renderTrendSelector() {
+  if (!trends.length) {
+    el('trend-selector').innerHTML = '<span style="color:var(--text3);font-size:13px">Brak danych do wykresu</span>';
+    return;
+  }
+  el('trend-selector').innerHTML = trends.map((t, i) =>
+    `<button class="trend-btn ${i === 0 ? 'active' : ''}" onclick="selectTrend('${t.name}',this)">${t.name}</button>`
+  ).join('');
+  if (trends.length > 0) selectTrend(trends[0].name, el('trend-selector').firstChild);
+}
+
+function selectTrend(name, btn) {
+  document.querySelectorAll('.trend-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  activeTrend = name;
+  const trend = trends.find(t => t.name === name);
+  if (!trend) return;
+  if (trendChart) trendChart.destroy();
+
+  const ctx = el('trend-chart').getContext('2d');
+  const hasRef = trend.ref_min != null && trend.ref_max != null;
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trend.points.map(p => p.date),
+      datasets: [
+        {
+          label: name,
+          data: trend.points.map(p => p.value),
+          borderColor: '#ff3b30',
+          backgroundColor: 'rgba(255,59,48,0.08)',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: trend.points.map(p =>
+            hasRef && (p.value < trend.ref_min || p.value > trend.ref_max) ? '#ff3b30' : '#34c759'
+          ),
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          borderWidth: 2
+        },
+        ...(hasRef ? [
+          { label: 'Norma min', data: trend.points.map(() => trend.ref_min), borderColor: '#34c759', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false },
+          { label: 'Norma max', data: trend.points.map(() => trend.ref_max), borderColor: '#34c759', borderDash: [4,4], borderWidth: 1.5, pointRadius: 0, fill: false }
+        ] : [])
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { font: { family: 'Inter', size: 11 }, color: '#6c6c70', boxWidth: 16 } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.raw} ${trend.unit || ''}` }, bodyFont: { family: 'Inter' }, backgroundColor: '#fff', borderColor: '#e5e5ea', borderWidth: 1, titleColor: '#1c1c1e', bodyColor: '#6c6c70' }
+      },
+      scales: {
+        x: { ticks: { color: '#aeaeb2', font: { family: 'Inter', size: 11 } }, grid: { color: '#f2f2f7' } },
+        y: { min: 0, ticks: { color: '#aeaeb2', font: { family: 'Inter', size: 11 }, callback: v => v + (trend.unit ? ' ' + trend.unit : '') }, grid: { color: '#f2f2f7' } }
+      }
+    }
+  });
+}
+
+// ==================== ADMIN ====================
+async function loadAdmin() {
+  try {
+    const users = await api('GET', '/admin/users');
+    el('admin-users-wrap').innerHTML = `<table class="data-table">
+      <thead><tr><th>Login</th><th>Rola</th><th>Utworzony</th><th>Akcje</th></tr></thead>
+      <tbody>${users.map(u => `<tr>
+        <td class="bold">${u.username}</td>
+        <td><span class="badge ${u.is_admin ? 'badge-red' : 'badge-gray'}">${u.is_admin ? 'Admin' : 'User'}</span></td>
+        <td>${u.created_at.split('T')[0]}</td>
+        <td><div class="btn-row">
+          <button class="btn btn-secondary btn-sm" onclick="openResetModal(${u.id},'${u.username}')">Reset hasła</button>
+          ${u.id !== currentUser.id ? `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${u.username}')">Usuń</button>` : ''}
+        </div></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+async function createUser() {
+  const username = el('new-username').value.trim(), password = el('new-password').value;
+  const is_admin = el('new-is-admin').checked;
+  if (!username || !password) { toast('Wypełnij login i hasło', 'error'); return; }
+  if (password.length < 6) { toast('Min. 6 znaków', 'error'); return; }
+  try {
+    await api('POST', '/admin/users', { username, password, is_admin });
+    el('new-username').value = ''; el('new-password').value = ''; el('new-is-admin').checked = false;
+    toast(`✓ Użytkownik '${username}' utworzony`, 'success');
+    loadAdmin();
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`Usunąć '${username}' wraz z wszystkimi danymi?`)) return;
+  try {
+    await api('DELETE', `/admin/users/${id}`);
+    toast(`✓ Usunięto '${username}'`, 'success');
+    loadAdmin();
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+function openResetModal(id, username) {
+  resetUserId = id;
+  el('reset-label').textContent = `Nowe hasło dla: ${username}`;
+  el('reset-pwd').value = ''; el('reset-pwd2').value = '';
+  el('reset-modal').style.display = 'flex';
+  setTimeout(() => el('reset-pwd').focus(), 50);
+}
+function closeResetModal() { el('reset-modal').style.display = 'none'; resetUserId = null; }
+
+async function doResetPassword() {
+  const pwd = el('reset-pwd').value, pwd2 = el('reset-pwd2').value;
+  if (!pwd) { toast('Wpisz hasło', 'error'); return; }
+  if (pwd !== pwd2) { toast('Hasła nie są identyczne', 'error'); return; }
+  if (pwd.length < 6) { toast('Min. 6 znaków', 'error'); return; }
+  try {
+    await api('PUT', `/admin/users/${resetUserId}/password`, { new_password: pwd });
+    closeResetModal(); toast('✓ Hasło zmienione', 'success');
+  } catch(e) { toast('Błąd: ' + e.message, 'error'); }
+}
+
+// ==================== HELPERS ====================
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  el('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'profile') loadProfile();
+  if (name === 'admin') loadAdmin();
+}
+
+function categoryLabel(cat) {
+  const map = { wizyta: 'Wizyta', zabieg: 'Zabieg', operacja: 'Operacja', szczepienie: 'Szczepienie', hospitalizacja: 'Hospitalizacja', inne: 'Inne' };
+  return map[cat] || cat;
+}
+function categoryBadge(cat) {
+  const map = { wizyta: 'badge-blue', zabieg: 'badge-orange', operacja: 'badge-red', szczepienie: 'badge-green', hospitalizacja: 'badge-red', inne: 'badge-gray' };
+  return map[cat] || 'badge-gray';
+}
+function fileIcon(mime) {
+  if (mime === 'application/pdf') return '📄';
+  if (mime && mime.startsWith('image/')) return '🖼️';
+  return '📎';
+}
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+function el(id) { return document.getElementById(id); }
+function toast(msg, type = '') {
+  const t = el('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+boot();
+</script>
+</body>
+</html>
