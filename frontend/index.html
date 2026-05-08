@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Health Tracker</title>
+<title>Medical Record Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -232,7 +232,7 @@
 <div class="auth-screen" id="screen-setup" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">❤️</div>
-    <h1>Health Tracker</h1>
+    <h1>Medical Record Tracker</h1>
     <div class="auth-subtitle">Pierwsze uruchomienie</div>
     <div class="auth-desc">Utwórz konto administratora. Będziesz mógł dodawać kolejnych użytkowników z poziomu aplikacji.</div>
     <div class="auth-field"><label>Login</label><input type="text" id="setup-username" onkeydown="if(event.key==='Enter')doSetup()"></div>
@@ -247,7 +247,7 @@
 <div class="auth-screen" id="screen-login" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">❤️</div>
-    <h1>Health Tracker</h1>
+    <h1>Medical Record Tracker</h1>
     <div class="auth-subtitle">Zaloguj się</div>
     <div class="auth-field"><label>Login</label><input type="text" id="login-username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="auth-field"><label>Hasło</label><input type="password" id="login-password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -261,7 +261,7 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">❤️</div>
-      <div class="sidebar-logo-text">Health<span>Tracker</span></div>
+      <div class="sidebar-logo-text">Medical Record<span>Tracker</span></div>
     </div>
     <nav>
       <button class="nav-item active" onclick="showPage('overview',this)"><span class="nav-icon">📊</span> Przegląd</button>

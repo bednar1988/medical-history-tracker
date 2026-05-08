@@ -14,6 +14,11 @@ import bcrypt
 from jose import JWTError, jwt
 import pymupdf
 import re
+import pymupdf
+import subprocess
+import tempfile
+import httpx
+import secrets
 import json
 
 app = FastAPI(title="Health Tracker")
@@ -28,10 +33,13 @@ app.add_middleware(
 
 DB_PATH = os.getenv("DB_PATH", "/data/health.db")
 UPLOADS_PATH = os.getenv("UPLOADS_PATH", "/data/uploads")
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-to-a-random-secret-min-32-chars")
+SECRET_KEY=secrets.token_hex(32)
 ALGORITHM = "HS256"
 COOKIE_NAME = "health_session"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://192.168.0.2:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+
 
 # ==================== DATABASE ====================
 
@@ -618,96 +626,92 @@ async def ocr_pdf(file: UploadFile = File(...), user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Plik za duży")
 
     try:
-        doc = pymupdf.open(stream=content, filetype="pdf" if file.content_type == "application/pdf" else "png")
-        full_text = ""
-        for page in doc:
-            full_text += page.get_text() + "\n"
-        doc.close()
+        full_text = extract_text_from_pdf(content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Błąd OCR: {str(e)}")
 
-    parameters = parse_lab_text(full_text)
+    print(f"=== OCR TEXT LENGTH: {len(full_text)} ===")
+    print(f"=== OCR TEXT PREVIEW: {full_text[:500]} ===")
+    parameters = await parse_with_ollama(full_text)
     return {"raw_text": full_text[:3000], "parameters": parameters}
 
-def parse_lab_text(text: str) -> list:
-    """
-    Parse lab results text. Looks for patterns like:
-    Parametr nazwa  wartość  jednostka  zakres ref
-    Handles common Polish lab report formats.
-    """
-    parameters = []
-    lines = text.split("\n")
+def extract_text_from_pdf(content: bytes) -> str:
+    # Próba 1: wyciągnij tekst wektorowy
+    doc = pymupdf.open(stream=content, filetype="pdf")
+    full_text = ""
+    for page in doc:
+        full_text += page.get_text()
+    doc.close()
+    
+    # Jeśli tekst jest śmieciami lub pusty – użyj Tesseract przez konwersję stron na obrazy
+    if len(full_text.strip()) < 50 or looks_like_garbage(full_text):
+        full_text = ocr_with_tesseract(content)
+    
+    return full_text
 
-    # Common patterns for lab values
-    # Pattern: name [spaces] value [spaces] unit [spaces] ref_range
-    # e.g. "Glukoza  5.2  mmol/L  3.9-6.1"
-    # e.g. "Cholesterol całkowity  4.85  mmol/L  <5.20"
-    # e.g. "TSH  2.450  mIU/L  0.270-4.200"
+def looks_like_garbage(text: str) -> bool:
+    # Heurystyka: za dużo znaków specjalnych = śmieci
+    if not text.strip():
+        return True
+    printable = sum(1 for c in text if c.isprintable() and c.isascii())
+    ratio = printable / max(len(text), 1)
+    return ratio < 0.6
 
-    number_pattern = re.compile(
-        r'^(.+?)\s{2,}(\d+[.,]\d*|\d+)\s{1,}([a-zA-Z/%μµ]+[/a-zA-Z0-9μµ]*)\s*([<>]?\s*\d+[.,]?\d*\s*[-–]\s*\d+[.,]?\d*|[<>]\s*\d+[.,]?\d*)?',
-        re.MULTILINE
-    )
+def ocr_with_tesseract(content: bytes) -> str:
+    """Konwertuje PDF na obrazy i puszcza przez Tesseract."""
+    doc = pymupdf.open(stream=content, filetype="pdf")
+    full_text = ""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        for i, page in enumerate(doc):
+            # Renderuj stronę jako obraz 300 DPI
+            mat = pymupdf.Matrix(300/72, 300/72)
+            pix = page.get_pixmap(matrix=mat)
+            img_path = f"{tmpdir}/page_{i}.png"
+            pix.save(img_path)
+            # Tesseract
+            result = subprocess.run(
+                ["tesseract", img_path, "stdout", "-l", "pol+eng", "--psm", "6"],
+                capture_output=True, text=True, timeout=30
+            )
+            full_text += result.stdout + "\n"
+    doc.close()
+    return full_text
 
-    seen_names = set()
+async def parse_with_ollama(text: str) -> list:
+    prompt = f"""Jesteś asystentem medycznym. Z poniższego tekstu wyników badań laboratoryjnych wyciągnij wszystkie parametry.
+Odpowiedz TYLKO jako JSON array, bez żadnego tekstu przed ani po. Format:
+[{{"name": "Nazwa parametru", "value": 5.4, "unit": "jednostka", "ref_min": 4.0, "ref_max": 6.0}}]
+Jeśli brak zakresu referencyjnego, użyj null. Wartości liczbowe jako liczby, nie stringi.
 
-    for line in lines:
-        line = line.strip()
-        if len(line) < 3:
-            continue
+Tekst wyników:
+{text}
 
-        # Skip lines that look like headers/labels only
-        if re.match(r'^[A-ZŻŹĆĄŚĘŁÓŃ\s]+$', line) and len(line) > 30:
-            continue
+JSON:"""
 
-        m = number_pattern.match(line)
-        if m:
-            name = m.group(1).strip().rstrip('.:')
-            val_str = m.group(2).replace(',', '.')
-            unit = m.group(3).strip() if m.group(3) else ""
-            ref_raw = m.group(4).strip() if m.group(4) else ""
-
-            # Skip obviously non-parameter lines
-            if any(skip in name.lower() for skip in ['data', 'pacjent', 'lekarz', 'pesel', 'telefon', 'adres', 'numer', 'laborator', 'strona']):
-                continue
-
-            if name in seen_names:
-                continue
-            seen_names.add(name)
-
-            try:
-                value = float(val_str)
-            except:
-                continue
-
-            ref_min, ref_max = None, None
-            ref_text = ref_raw
-
-            # Parse reference range
-            range_match = re.search(r'(\d+[.,]?\d*)\s*[-–]\s*(\d+[.,]?\d*)', ref_raw)
-            if range_match:
-                try:
-                    ref_min = float(range_match.group(1).replace(',', '.'))
-                    ref_max = float(range_match.group(2).replace(',', '.'))
-                except:
-                    pass
-
-            is_abnormal = False
-            if ref_min is not None and ref_max is not None:
-                is_abnormal = value < ref_min or value > ref_max
-
-            parameters.append({
-                "name": name,
-                "value": value,
-                "value_text": None,
-                "unit": unit,
-                "ref_min": ref_min,
-                "ref_max": ref_max,
-                "ref_text": ref_text,
-                "is_abnormal": is_abnormal
-            })
-
-    return parameters
+    async with httpx.AsyncClient(timeout=600.0) as client:
+        r = await client.post(f"{OLLAMA_URL}/api/generate", json={
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0.1}
+        })
+        r.raise_for_status()
+        raw = r.json()["response"].strip()
+        # Wyciągnij JSON z odpowiedzi
+        start = raw.find('[')
+        end = raw.rfind(']') + 1
+        if start == -1 or end == 0:
+            return []
+        data = json.loads(raw[start:end])
+        # Dodaj is_abnormal
+        for p in data:
+            v = p.get("value")
+            rmin = p.get("ref_min")
+            rmax = p.get("ref_max")
+            p["is_abnormal"] = bool(v and rmin and rmax and (v < rmin or v > rmax))
+            p.setdefault("value_text", None)
+            p.setdefault("ref_text", "")
+        return data
 
 # ==================== STATIC ====================
 
